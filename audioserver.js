@@ -59,7 +59,7 @@ app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
   try {
     // Create a Speech-to-Text client
     const client = new SpeechClient({
-      keyFilename: 'speech-to-text.json' // Replace with your Google Cloud service account key file path
+      keyFilename: 'node audioserver.js' // Replace with your Google Cloud service account key file path
     });
 
     // Split the audio into 1-second segments

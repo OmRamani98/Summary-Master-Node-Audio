@@ -9,7 +9,7 @@ const port = process.env.PORT || 8000;
 // Enable CORS for requests from the React app
 const cors = require('cors');
 app.use(cors({
-  origin: 'https://65f1ded04ec438009034ec5c--summarrymaster.netlify.app/' // Replace with your React app's origin
+  origin: 'http://localhost:3000/' // Replace with your React app's origin
 }));
 
 // Configure multer for handling file uploads

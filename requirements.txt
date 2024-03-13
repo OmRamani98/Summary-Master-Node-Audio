@@ -1,5 +1,4 @@
 Gunicorn
 express
 multer
-@google-cloud/speech
 cors

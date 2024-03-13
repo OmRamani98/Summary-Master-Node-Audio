@@ -1,4 +1,0 @@
-Gunicorn
-express
-multer
-cors

@@ -1,124 +1,150 @@
 const express = require('express');
 const multer = require('multer');
-const fs = require('fs');
+const cors = require('cors');
+const { Storage } = require('@google-cloud/storage');
 const { SpeechClient } = require('@google-cloud/speech').v1;
-const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 8000;
 
-// Enable CORS for requests from the React app
-const cors = require('cors');
-app.use(cors({
-  origin: 'http://localhost:3000' // Replace with your React app's origin
-}));
+// Use cors middleware to allow requests from any origin
+app.use(cors());
+
+// Set up Google Cloud Storage
+const storage = new Storage({ keyFilename: 'cloude-storage.json' });
+const bucketName = 'summary-master'; // Replace with your GCS bucket name
+const bucket = storage.bucket(bucketName);
+
+// Set up Google Cloud Speech-to-Text
+const speechClient = new SpeechClient({ keyFilename: 'speech-to-text.json' });
 
 // Configure multer for handling file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, 'uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+const upload = multer({ storage: multer.memoryStorage() });
+
+// Define endpoint for uploading audio and transcribing
+app.post('/upload-and-transcribe', upload.single('audioFile'), async (req, res) => {
+    const file = req.file;
+
+    if (!file) {
+        return res.status(400).json({ error: 'No file uploaded' });
     }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    // Generate a dynamic filename with a unique suffix
-    cb(null, uniqueSuffix + '-' + file.originalname);
-  }
+
+    try {
+        // Divide the audio file into smaller segments (e.g., 30 seconds each)
+        const segmentSize = 30 * 1000; // 30 seconds in milliseconds
+        const audioSegments = divideAudioIntoSegments(file.buffer, segmentSize);
+
+        // Object to store transcriptions of each segment
+        const transcriptions = {};
+
+        // Process each audio segment asynchronously
+        await Promise.all(audioSegments.map(async (segment, index) => {
+            try {
+                // Upload the segment to GCS asynchronously
+                const segmentFileName = `${file.originalname}-part-${index}`;
+                await uploadToGCS(segmentFileName, segment);
+
+                // Configure the audio settings for transcription
+                const audioConfig = {
+                    encoding: 'MP3',
+                    sampleRateHertz: 16000,
+                    languageCode: 'en-US',
+                    enableAutomaticPunctuation: true, // Enable automatic punctuation
+                };
+
+                // Configure the audio source
+                const audio = {
+                    uri: `gs://${bucketName}/${segmentFileName}`,
+                };
+
+                // Set up the speech recognition request
+                const request = {
+                    audio: audio,
+                    config: audioConfig,
+                };
+
+                // Perform the speech recognition asynchronously
+                const [response] = await speechClient.recognize(request);
+
+                // Process the transcription response
+                const transcription = response.results
+                    .map(result => result.alternatives[0].transcript)
+                    .join('\n');
+
+                // Store the transcription with its segment index
+                transcriptions[index] = transcription;
+            } catch (error) {
+                console.error(`Error processing segment ${index}:`, error);
+                // Store an empty transcription if an error occurs
+                transcriptions[index] = '';
+            }
+        }));
+
+        // Combine transcriptions from all segments
+        const fullTranscription = Object.values(transcriptions).join('\n');
+
+        console.log('Full Transcription:', fullTranscription);
+
+        // Delete the uploaded files from GCS
+        await deleteSegmentsFromGCS(file.originalname, audioSegments.length);
+
+        console.log('Segments deleted from GCS');
+
+        res.status(200).json({ transcription: fullTranscription });
+    } catch (error) {
+        console.error('Error processing audio:', error);
+        res.status(500).json({ error: 'Failed to process audio' });
+    }
 });
-const upload = multer({ storage: storage });
 
-// Function to split audio into 1-second segments
-const splitAudioIntoSegments = async (filePath) => {
-  const audioSegments = [];
+// Function to divide audio into smaller segments
+function divideAudioIntoSegments(audioData, segmentSize) {
+    const audioSegments = [];
+    let offset = 0;
 
-  // Read the audio file
-  const audioData = fs.readFileSync(filePath);
-  const audioLength = audioData.length;
-  const segmentSize = 16000 * 2; // Assuming 16-bit audio at 16 kHz (1-second segment)
+    while (offset < audioData.length) {
+        const segment = audioData.slice(offset, offset + segmentSize);
+        audioSegments.push(segment);
+        offset += segmentSize;
+    }
 
-  // Split the audio into segments
-  for (let i = 0; i < audioLength; i += segmentSize) {
-    const segment = audioData.slice(i, i + segmentSize);
-    audioSegments.push(segment);
-  }
+    return audioSegments;
+}
 
-  return audioSegments;
-};
+// Function to upload a file to GCS asynchronously
+async function uploadToGCS(fileName, data) {
+    const blob = bucket.file(fileName);
+    const blobStream = blob.createWriteStream();
 
-// Function to get file extension
-const getFileExtension = (filename) => {
-  return filename.split('.').pop().toLowerCase();
-};
+    await new Promise((resolve, reject) => {
+        blobStream.on('error', (err) => {
+            console.error('Error uploading segment to GCS:', err);
+            reject(err);
+        });
 
-// POST endpoint for handling audio file upload and text extraction
-app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
-  const { path } = req.file;
+        blobStream.on('finish', () => {
+            console.log('Segment uploaded to GCS:', fileName);
+            resolve();
+        });
 
-  try {
-    // Create a Speech-to-Text client
-    const client = new SpeechClient({
-      keyFilename: 'speech-to-text.json' // Replace with your Google Cloud service account key file path
+        blobStream.end(data);
     });
+}
 
-    // Split the audio into 1-second segments
-    const audioSegments = await splitAudioIntoSegments(path);
+// Function to delete the uploaded segments from GCS
+async function deleteSegmentsFromGCS(originalFileName, numSegments) {
+    const deletePromises = [];
 
-    // Define recognition config
-    let config = {
-      sampleRateHertz: 16000,
-      languageCode: 'en-US',
-      enableAutomaticPunctuation: true
-    };
-
-    // Detect file extension and set encoding accordingly
-    const fileExtension = getFileExtension(req.file.originalname);
-    if (fileExtension === 'mp3') {
-      config.encoding = 'MP3';
-    } else if (fileExtension === 'wav') {
-      config.encoding = 'LINEAR16';
-    } // Add more cases as needed for other audio formats
-
-    const transcriptions = [];
-
-    // Recognize speech for each segment
-    for (const segment of audioSegments) {
-      const audio = {
-        content: segment
-      };
-
-      const [response] = await client.recognize({
-        audio: audio,
-        config: config
-      });
-
-      const transcription = response.results
-        .map(result => result.alternatives[0].transcript)
-        .join('\n');
-
-      transcriptions.push(transcription);
+    for (let i = 0; i < numSegments; i++) {
+        const segmentFileName = `${originalFileName}-part-${i}`;
+        const file = bucket.file(segmentFileName);
+        deletePromises.push(file.delete());
     }
 
-    // Join transcriptions from all segments
-    const fullTranscription = transcriptions.join('\n');
+    await Promise.all(deletePromises);
+}
 
-    // Set CORS headers
-    res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-    res.json({ textContent: fullTranscription });
-  } catch (error) {
-    console.error('Error extracting text:', error);
-    res.status(500).json({ error: 'Failed to extract text' });
-  } finally {
-    // Delete the temporary uploaded file
-    fs.unlinkSync(path);
-  }
-});
-
+// Start the server
 app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+    console.log(`Server listening on port ${port}`);
 });

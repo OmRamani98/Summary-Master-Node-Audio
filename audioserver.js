@@ -7,7 +7,9 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 8000;
 
-app.use(cors()); // Enable CORS for all routes
+app.use(cors(
+  origin: '*' 
+)); // Enable CORS for all routes
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {

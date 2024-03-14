@@ -7,7 +7,7 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 8000;
 // Enable CORS for requests from the React app
-// const cors = require('cors');
+const cors = require('cors');
 app.use(cors());
 
 // Configure multer for handling file uploads

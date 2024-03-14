@@ -3,14 +3,17 @@ const multer = require('multer');
 const fs = require('fs');
 const { SpeechClient } = require('@google-cloud/speech').v1;
 const path = require('path');
-const cors = require('cors');
+
 const app = express();
 const port = process.env.PORT || 8000;
 
+// Enable CORS for requests from the React app
+const cors = require('cors');
 app.use(cors({
-  origin: 'http://localhost:3000'
-}));// Enable CORS for all routes
+  origin: 'http://localhost:3000' // Replace with your React app's origin
+}));
 
+// Configure multer for handling file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = path.join(__dirname, 'uploads');
@@ -57,7 +60,7 @@ app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
   try {
     // Create a Speech-to-Text client
     const client = new SpeechClient({
-      keyFilename: 'node audioserver.js' // Replace with your Google Cloud service account key file path
+      keyFilename: 'speech-to-text.json' // Replace with your Google Cloud service account key file path
     });
 
     // Split the audio into 1-second segments
@@ -101,7 +104,11 @@ app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
     // Join transcriptions from all segments
     const fullTranscription = transcriptions.join('\n');
 
-    res.header('Access-Control-Allow-Origin', '*'); // Allow CORS for this specific route
+    // Set CORS headers
+    res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
     res.json({ textContent: fullTranscription });
   } catch (error) {
     console.error('Error extracting text:', error);

@@ -3,14 +3,12 @@ const multer = require('multer');
 const fs = require('fs');
 const { SpeechClient } = require('@google-cloud/speech').v1;
 const path = require('path');
-
+const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 8000;
-// Enable CORS for requests from the React app
-const cors = require('cors');
+
 app.use(cors());
 
-// Configure multer for handling file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = path.join(__dirname, 'uploads');

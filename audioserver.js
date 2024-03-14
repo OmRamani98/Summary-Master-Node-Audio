@@ -7,9 +7,7 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 8000;
 
-app.use(cors({
-  origin: '*' // Replace with your React app's origin
-}));
+app.use(cors()); // Enable CORS for all routes
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -101,6 +99,7 @@ app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
     // Join transcriptions from all segments
     const fullTranscription = transcriptions.join('\n');
 
+    res.header('Access-Control-Allow-Origin', '*'); // Allow CORS for this specific route
     res.json({ textContent: fullTranscription });
   } catch (error) {
     console.error('Error extracting text:', error);

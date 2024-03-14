@@ -8,7 +8,7 @@ const app = express();
 const port = process.env.PORT || 8000;
 
 app.use(cors({
-  origin: '*'
+  origin: 'http://localhost:3000'
 }));// Enable CORS for all routes
 
 const storage = multer.diskStorage({

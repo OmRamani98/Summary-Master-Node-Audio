@@ -2,7 +2,7 @@
   "name": "Summary-Master",
   "version": "1.0.0",
   "description": "Summary-Master-Node-Audio",
-  "main": "app.js",
+  "main": "audioserver.js",
   "repository": "https://github.com/OmRamani98/Summary-Master-Node-Audio.git",
   "author": "Om Ramani",
   "private": false,

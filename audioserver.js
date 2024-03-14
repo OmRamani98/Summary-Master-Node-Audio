@@ -8,7 +8,7 @@ const app = express();
 const port = process.env.PORT || 8000;
 
 app.use(cors({
-  origin: '*' // Replace with your React app's origin
+  rigin: 'https://summary-master.netlify.app'// Replace with your React app's origin
 }));// Enable CORS for all routes
 
 const storage = multer.diskStorage({

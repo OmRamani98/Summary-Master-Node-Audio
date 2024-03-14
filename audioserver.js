@@ -90,7 +90,7 @@ app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
 
         console.log('Segments deleted from GCS');
 
-        res.status(200).json({ transcription: fullTranscription });
+        res.status(200).json({ textContent: fullTranscription });
     } catch (error) {
         console.error('Error processing audio:', error);
         res.status(500).json({ error: 'Failed to process audio' });

@@ -13,7 +13,7 @@ app.use(cors());
 
 
 // Set up Google Cloud Storage
-const storage = new Storage({ keyFilename: JSON.parse(process.env.GOOGLE_STORAGE_KEYFILE}));
+const storage = new Storage({ keyFilename: JSON.parse(process.env.GOOGLE_STORAGE_KEYFILE)});
 const bucketName = 'summary-master'; // Replace with your GCS bucket name
 const bucket = storage.bucket(bucketName);
 

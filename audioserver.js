@@ -115,23 +115,42 @@ function divideAudioIntoSegments(audioData, segmentSize) {
 
 // Function to upload a file to GCS asynchronously
 async function uploadToGCS(fileName, data) {
-    const blob = bucket.file(fileName);
-    const blobStream = blob.createWriteStream();
+  const blob = bucket.file(fileName); // Using fileName for path
+  const blobStream = blob.createWriteStream();
 
-    await new Promise((resolve, reject) => {
-        blobStream.on('error', (err) => {
-            console.error('Error uploading segment to GCS:', err);
-            reject(err);
-        });
-
-        blobStream.on('finish', () => {
-            console.log('Segment uploaded to GCS:', fileName);
-            resolve();
-        });
-
-        blobStream.end(data);
+  await new Promise((resolve, reject) => {
+    blobStream.on('error', (err) => {
+      console.error('Error uploading segment to GCS:', err);
+      reject(err);
     });
+
+    blobStream.on('finish', () => {
+      console.log('Segment uploaded to GCS:', fileName);
+      resolve();
+    });
+
+    blobStream.end(data);
+  });
 }
+
+// async function uploadToGCS(fileName, data) {
+//     const blob = bucket.file(fileName);
+//     const blobStream = blob.createWriteStream();
+
+//     await new Promise((resolve, reject) => {
+//         blobStream.on('error', (err) => {
+//             console.error('Error uploading segment to GCS:', err);
+//             reject(err);
+//         });
+
+//         blobStream.on('finish', () => {
+//             console.log('Segment uploaded to GCS:', fileName);
+//             resolve();
+//         });
+
+//         blobStream.end(data);
+//     });
+// }
 
 // Function to delete the uploaded segments from GCS
 async function deleteSegmentsFromGCS(originalFileName, numSegments) {

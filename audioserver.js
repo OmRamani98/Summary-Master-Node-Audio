@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
@@ -11,18 +12,18 @@ const port = process.env.PORT || 8000;
 app.use(cors());
 
 // Set up Google Cloud Storage
-const storage = new Storage({ keyFilename: 'cloude-storage.json' });
+const storage = new Storage({ keyFilename: process.env.GOOGLE_STORAGE_KEYFILE});
 const bucketName = 'summary-master'; // Replace with your GCS bucket name
 const bucket = storage.bucket(bucketName);
 
 // Set up Google Cloud Speech-to-Text
-const speechClient = new SpeechClient({ keyFilename: 'speech-to-text.json' });
+const speechClient = new SpeechClient({ keyFilename: process.env.GOOGLE_SPEECH_KEYFILE  });
 
 // Configure multer for handling file uploads
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Define endpoint for uploading audio and transcribing
-app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
+app.post('/upload-and-transcribe', upload.single('audioFile'), async (req, res) => {
     const file = req.file;
 
     if (!file) {
@@ -90,7 +91,7 @@ app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
 
         console.log('Segments deleted from GCS');
 
-        res.status(200).json({ textContent: fullTranscription });
+        res.status(200).json({ transcription: fullTranscription });
     } catch (error) {
         console.error('Error processing audio:', error);
         res.status(500).json({ error: 'Failed to process audio' });
@@ -148,3 +149,4 @@ async function deleteSegmentsFromGCS(originalFileName, numSegments) {
 app.listen(port, () => {
     console.log(`Server listening on port ${port}`);
 });
+

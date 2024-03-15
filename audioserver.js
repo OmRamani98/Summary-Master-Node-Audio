@@ -41,8 +41,10 @@ app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
         await Promise.all(audioSegments.map(async (segment, index) => {
             try {
                 // Upload the segment to GCS asynchronously
-                const segmentFileName = `${file.originalname}-part-${index}`;
-                await uploadToGCS(segmentFileName.toString(), segment);
+                
+                const segmentFileName = `${String(file.originalname)}-part-${index}`;
+                await uploadToGCS(segmentFileName, segment);
+
 
                 // Configure the audio settings for transcription
                 const audioConfig = {

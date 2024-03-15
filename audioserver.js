@@ -45,7 +45,7 @@ app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
                 const segmentFileName = `${String(file.originalname)}-part-${index}`;
                 console.log("segmentFileName",segmentFileName);
                 await uploadToGCS(segmentFileName, segment);
-
+                console.log("outgcs");
 
                 // Configure the audio settings for transcription
                 const audioConfig = {

@@ -43,6 +43,7 @@ app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
                 // Upload the segment to GCS asynchronously
                 
                 const segmentFileName = `${String(file.originalname)}-part-${index}`;
+                console.log("segmentFileName",segmentFileName);
                 await uploadToGCS(segmentFileName, segment);
 
 

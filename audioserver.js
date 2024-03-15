@@ -23,7 +23,7 @@ const speechClient = new SpeechClient({ keyFilename: process.env.GOOGLE_SPEECH_K
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Define endpoint for uploading audio and transcribing
-app.post('/upload-and-transcribe', upload.single('audioFile'), async (req, res) => {
+app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
     const file = req.file;
 
     if (!file) {

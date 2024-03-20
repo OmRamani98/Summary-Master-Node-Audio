@@ -192,8 +192,11 @@ function divideAudioIntoSegments(audioData, segmentSize) {
 // Improved uploadToGCS function
 async function uploadToGCS(bucketName, fileName, data) {
     try {
+        // Convert fileName to a string if it's not already
+        const stringFileName = String(fileName);
+
         // Create a file object representing the destination in GCS
-        const file = bucket.file(String(fileName)); // Convert fileName to a string
+        const file = bucket.file(stringFileName);
 
         // Create a write stream for uploading data to the file
         const stream = file.createWriteStream({
@@ -210,7 +213,7 @@ async function uploadToGCS(bucketName, fileName, data) {
             });
 
             stream.on('finish', () => {
-                console.log('File uploaded successfully:', fileName);
+                console.log('File uploaded successfully:', stringFileName);
                 resolve();
             });
 

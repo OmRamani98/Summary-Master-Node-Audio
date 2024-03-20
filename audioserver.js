@@ -189,11 +189,13 @@ function divideAudioIntoSegments(audioData, segmentSize) {
     return audioSegments;
 }
 
-// Improved uploadToGCS function
 async function uploadToGCS(bucketName, fileName, data) {
     try {
         // Convert fileName to a string if it's not already
         const stringFileName = String(fileName);
+
+        console.log('File name:', stringFileName);
+        console.log('Data type:', typeof data);
 
         // Create a file object representing the destination in GCS
         const file = bucket.file(stringFileName);

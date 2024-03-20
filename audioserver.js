@@ -266,10 +266,19 @@ function divideAudioIntoSegments(audioData, segmentSize) {
 
 // Function to upload a file to GCS asynchronously
 // Function to upload a file to GCS
+// Function to upload a file to GCS
 async function uploadToGCS(fileName, data) {
-    await bucket.file(fileName).save(data);
+    console.log('Data type:', typeof data);
+    console.log('Data length:', data.length);
+    
+    await bucket.upload(data, {
+        destination: fileName,
+        resumable: false, // Disable resumable uploads for smaller files
+    });
+    
     console.log('Segment uploaded to GCS:', fileName);
 }
+
 
 // Function to delete the uploaded segments from GCS
 async function deleteSegmentsFromGCS(originalFileName, numSegments) {

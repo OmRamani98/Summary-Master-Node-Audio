@@ -189,45 +189,45 @@ function divideAudioIntoSegments(audioData, segmentSize) {
     return audioSegments;
 }
 
+// Improved uploadToGCS function
 async function uploadToGCS(bucketName, fileName, data) {
-    try {
-        // Convert fileName to a string if it's not already
-        const stringFileName = String(fileName);
-
-        console.log('File name:', stringFileName);
-        console.log('Data type:', typeof data);
-
-        // Create a file object representing the destination in GCS
-        const file = bucket.file(stringFileName);
-
-        // Create a write stream for uploading data to the file
-        const stream = file.createWriteStream({
-            metadata: {
-                contentType: 'audio/mpeg' // Set content type for MP3 files
-            }
-        });
-
-        // Efficiently stream the data to GCS
-        await new Promise((resolve, reject) => {
-            stream.on('error', (err) => {
-                console.error('Error uploading file to GCS:', err);
-                reject(err);
-            });
-
-            stream.on('finish', () => {
-                console.log('File uploaded successfully:', stringFileName);
-                resolve();
-            });
-
-            stream.write(data); // Write the data to the stream
-            stream.end(); // Signal the end of the stream
-        });
-
-        return { message: 'File uploaded successfully!' }; // Return success message
-    } catch (err) {
-        console.error('Error uploading file to GCS:', err);
-        throw err; // Re-throw for external error handling
+  try {
+    // Ensure fileName is a string
+    if (typeof fileName !== 'string') {
+      throw new Error('fileName must be a string');
     }
+
+    // Create a file object representing the destination in GCS
+    const file = bucket.file(fileName);
+
+    // Create a write stream for uploading data to the file
+    const stream = file.createWriteStream({
+      metadata: {
+        contentType: 'audio/mpeg' // Set content type for MP3 files
+      }
+    });
+
+    // Efficiently stream the data to GCS
+    await new Promise((resolve, reject) => {
+      stream.on('error', (err) => {
+        console.error('Error uploading file to GCS:', err);
+        reject(err);
+      });
+
+      stream.on('finish', () => {
+        console.log('File uploaded successfully:', fileName);
+        resolve();
+      });
+
+      stream.write(data); // Write the data to the stream
+      stream.end(); // Signal the end of the stream
+    });
+
+    return { message: 'File uploaded successfully!' }; // Return success message
+  } catch (err) {
+    console.error('Error uploading file to GCS:', err);
+    throw err; // Re-throw for external error handling
+  }
 }
 
 // Define endpoint for uploading audio and transcribing

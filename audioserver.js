@@ -166,7 +166,7 @@ app.use(cors());
 // Set up Google Cloud Storage
 // Replace placeholders with your actual values
 const storage = new Storage({ keyFilename: JSON.parse(process.env.CLOUD_STORAGE_KEYFILE) });
-const bucketName = 'your-bucket-name';
+const bucketName = 'summary-master';
 const bucket = storage.bucket(bucketName);
 
 // Set up Google Cloud Speech-to-Text

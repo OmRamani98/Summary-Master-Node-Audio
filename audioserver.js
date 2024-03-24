@@ -10,17 +10,24 @@ const port = process.env.PORT || 8000;
 // Use cors middleware to allow requests from any origin
 app.use(cors());
 
-// Set up Google Cloud Storage
-const storage = new Storage({
-  keyFilename: JSON.parse(process.env.CLOUD_STORAGE_KEYFILE),
+// Set up Google Cloud Storage 
+// const storage = new Storage({
+//   keyFilename: JSON.parse(process.env.CLOUD_STORAGE_KEYFILE),
+// });
+const storageClient = new Storage({
+  keyFilename: 'cloude-storage.json'
 });
 const bucketName = 'summary-master'; // Replace with your GCS bucket name
 const bucket = storage.bucket(bucketName);
 
-// Set up Google Cloud Speech-to-Text
-const speechClient = new SpeechClient({
-  keyFilename: JSON.parse(process.env.SPEECH_TO_TEXT_KEYFILE),
-});
+// Set up Google Cloud Speech-to-Text speech-to-text.json
+// const speechClient = new SpeechClient({
+//   keyFilename: JSON.parse(process.env.SPEECH_TO_TEXT_KEYFILE),
+// });
+const client = new SpeechClient({
+      keyFilename: 'speech-to-text.json' // Replace with your Google Cloud service account key file path
+    });
+
 
 // Configure multer for handling file uploads
 const upload = multer({ storage: multer.memoryStorage() });

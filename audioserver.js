@@ -109,90 +109,63 @@ app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    // Divide the audio file into smaller segments (e.g., 30 seconds each)
-    const segmentSize = 30 * 1000; // 30 seconds in milliseconds
-    const audioSegments = divideAudioIntoSegments(file.buffer, segmentSize);
+    // Constants for chunk size and chunk overlap (adjust as needed)
+    const CHUNK_SIZE_SECONDS = 60; // Chunk size in seconds
+    const CHUNK_OVERLAP_SECONDS = 5; // Overlap between chunks in seconds
 
-    // Object to store transcriptions of each segment
-    const transcriptions = {};
+    // Calculate chunk duration in milliseconds
+    const chunkSizeMs = CHUNK_SIZE_SECONDS * 1000;
+    const overlapMs = CHUNK_OVERLAP_SECONDS * 1000;
 
-    // Process each audio segment asynchronously
-    await Promise.all(audioSegments.map(async (segment, index) => {
-      try {
-        // Configure the audio settings for transcription
-        const audioConfig = {
-          encoding: 'MP3',
-          sampleRateHertz: 16000,
-          languageCode: 'en-US',
-          enableAutomaticPunctuation: true, // Enable automatic punctuation
-        };
+    // Split the audio file into chunks
+    let chunks = [];
+    let startMs = 0;
+    while (startMs < file.buffer.length) {
+      const endMs = Math.min(startMs + chunkSizeMs, file.buffer.length);
+      const chunk = file.buffer.slice(startMs, endMs);
+      chunks.push(chunk);
+      startMs = endMs - overlapMs;
+    }
 
-        // Configure the audio source
-        const audio = {
-          content: segment.toString('base64'),
-        };
+    // Perform asynchronous speech recognition for each chunk
+    const transcriptionPromises = chunks.map(async (chunk, index) => {
+      const audioConfig = {
+        encoding: 'MP3',
+        sampleRateHertz: 16000, // Adjust as needed
+        languageCode: 'en-US', // Language code
+        enableAutomaticPunctuation: true // Enable automatic punctuation
+      };
 
-        // Set up the speech recognition request
-        const request = {
-          audio: audio,
-          config: audioConfig,
-        };
+      const audio = {
+        content: chunk.toString('base64')
+      };
 
-        // Perform the speech recognition asynchronously
-        const [response] = await speechClient.recognize(request);
+      const request = {
+        audio: audio,
+        config: audioConfig
+      };
 
-        // Process the transcription response
-        const transcription = response.results
-          .map(result => result.alternatives[0].transcript)
-          .join('\n');
+      const [response] = await speechClient.recognize(request);
+      return response.results.map(result => result.alternatives[0].transcript).join('\n');
+    });
 
-        // Store the transcription with its segment index
-        transcriptions[index] = transcription;
-      } catch (error) {
-        console.error(`Error processing segment ${index}:`, error);
-        // Store an empty transcription if an error occurs
-        transcriptions[index] = '';
-      }
-    }));
+    // Wait for all transcription promises to resolve
+    const transcriptions = await Promise.all(transcriptionPromises);
 
-    // Combine transcriptions from all segments
-    const fullTranscription = Object.values(transcriptions).join('\n');
+    // Combine transcriptions from all chunks
+    const combinedTranscription = transcriptions.join('\n');
 
-    // Remove the uploaded file from memory
-    deleteUploadedFile(file);
-
-    // Respond with the full transcription
-    res.status(200).json({ textContent: fullTranscription });
+    // Respond with the combined transcription
+    res.status(200).json({ textContent: combinedTranscription });
   } catch (error) {
     console.error('Error processing audio:', error);
     res.status(500).json({ error: 'Failed to process audio' });
   }
 });
 
-// Function to divide audio into smaller segments
-function divideAudioIntoSegments(audioData, segmentSize) {
-  const audioSegments = [];
-  let offset = 0;
-
-  while (offset < audioData.length) {
-    const segment = audioData.slice(offset, offset + segmentSize);
-    audioSegments.push(segment);
-    offset += segmentSize;
-  }
-
-  return audioSegments;
-}
-
-// Function to delete the uploaded file from memory
-function deleteUploadedFile(file) {
-  // Use the file reference to delete the buffer from memory
-  file.buffer = null;
-}
-
 // Start the server
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
-
 
 

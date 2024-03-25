@@ -156,12 +156,11 @@
 // app.listen(port, () => {
 //     console.log(`Server listening on port ${port}`);
 // });
-
-
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
 const { Storage } = require('@google-cloud/storage');
+const { SpeechClient } = require('@google-cloud/speech').v1;
 
 const app = express();
 app.use(cors());
@@ -169,11 +168,17 @@ const port = process.env.PORT || 8000;
 
 // Set up Google Cloud Storage using service account key from environment variable
 const storage = new Storage({
-  projectId:"summary-master-sdp",
+  projectId: "summary-master-sdp",
   credentials: JSON.parse(process.env.CLOUD_STORAGE_KEYFILE)
 });
 const bucketName = 'summary-master'; // Replace with your GCS bucket name
 const bucket = storage.bucket(bucketName);
+
+// Set up Google Cloud Speech-to-Text
+const speechClient = new SpeechClient({
+  projectId: "summary-master-sdp", // Replace with your Google Cloud project ID
+  credentials: JSON.parse(process.env.SPEECH_TO_TEXT_KEYFILE)
+});
 
 // Configure multer for handling file uploads
 const upload = multer({ storage: multer.memoryStorage() });
@@ -186,29 +191,38 @@ app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const fileName = `${Date.now()}-${file.originalname}`;
-    const fileUpload = bucket.file(fileName);
+    // Configure audio settings for speech recognition
+    const audioConfig = {
+      encoding: 'MP3',
+      sampleRateHertz: 16000, // Adjust as needed
+      languageCode: 'en-US', // Language code
+      enableAutomaticPunctuation: true // Enable automatic punctuation
+    };
 
-    const stream = fileUpload.createWriteStream({
-      metadata: {
-        contentType: file.mimetype
-      },
-      resumable: false
-    });
+    // Configure the audio source
+    const audio = {
+      content: file.buffer.toString('base64')
+    };
 
-    stream.on('error', (err) => {
-      console.error(err);
-      res.status(500).send('Error uploading file to Google Cloud Storage');
-    });
+    // Set up the speech recognition request
+    const request = {
+      audio: audio,
+      config: audioConfig
+    };
 
-    stream.on('finish', () => {
-      res.status(200).json({ message: 'File uploaded successfully' });
-    });
+    // Perform the speech recognition
+    const [response] = await speechClient.recognize(request);
 
-    stream.end(file.buffer);
+    // Process the transcription response
+    const transcription = response.results
+      .map(result => result.alternatives[0].transcript)
+      .join('\n');
+
+    // Respond with the transcription
+    res.status(200).json({ textContent: transcription });
   } catch (error) {
-    console.error('Error uploading file:', error);
-    res.status(500).json({ error: 'Failed to upload file' });
+    console.error('Error processing audio:', error);
+    res.status(500).json({ error: 'Failed to process audio' });
   }
 });
 
@@ -216,3 +230,5 @@ app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
+

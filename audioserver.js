@@ -169,6 +169,7 @@ const port = process.env.PORT || 8000;
 
 // Set up Google Cloud Storage using service account key from environment variable
 const storage = new Storage({
+  projectId:"summary-master-sdp",
   credentials: JSON.parse(process.env.CLOUD_STORAGE_KEYFILE)
 });
 const bucketName = 'summary-master'; // Replace with your GCS bucket name

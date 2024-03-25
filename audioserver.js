@@ -109,43 +109,79 @@ app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    // Configure audio settings for speech recognition
-    const audioConfig = {
-      encoding: 'MP3',
-      sampleRateHertz: 16000, // Adjust as needed
-      languageCode: 'en-US', // Language code
-      enableAutomaticPunctuation: true // Enable automatic punctuation
-    };
+    // Divide the audio file into smaller segments (e.g., 30 seconds each)
+    const segmentSize = 30 * 1000; // 30 seconds in milliseconds
+    const audioSegments = divideAudioIntoSegments(file.buffer, segmentSize);
 
-    // Configure the audio source
-    const audio = {
-      content: file.buffer.toString('base64')
-    };
+    // Object to store transcriptions of each segment
+    const transcriptions = {};
 
-    // Set up the speech recognition request
-    const request = {
-      audio: audio,
-      config: audioConfig
-    };
+    // Process each audio segment asynchronously
+    await Promise.all(audioSegments.map(async (segment, index) => {
+      try {
+        // Configure the audio settings for transcription
+        const audioConfig = {
+          encoding: 'MP3',
+          sampleRateHertz: 16000,
+          languageCode: 'en-US',
+          enableAutomaticPunctuation: true, // Enable automatic punctuation
+        };
 
-    // Perform the speech recognition
-    const [response] = await speechClient.recognize(request);
+        // Configure the audio source
+        const audio = {
+          content: segment.toString('base64'),
+        };
 
-    // Process the transcription response
-    const transcription = response.results
-      .map(result => result.alternatives[0].transcript)
-      .join('\n');
+        // Set up the speech recognition request
+        const request = {
+          audio: audio,
+          config: audioConfig,
+        };
+
+        // Perform the speech recognition asynchronously
+        const [response] = await speechClient.recognize(request);
+
+        // Process the transcription response
+        const transcription = response.results
+          .map(result => result.alternatives[0].transcript)
+          .join('\n');
+
+        // Store the transcription with its segment index
+        transcriptions[index] = transcription;
+      } catch (error) {
+        console.error(`Error processing segment ${index}:`, error);
+        // Store an empty transcription if an error occurs
+        transcriptions[index] = '';
+      }
+    }));
+
+    // Combine transcriptions from all segments
+    const fullTranscription = Object.values(transcriptions).join('\n');
 
     // Remove the uploaded file from memory
     deleteUploadedFile(file);
 
-    // Respond with the transcription
-    res.status(200).json({ textContent: transcription });
+    // Respond with the full transcription
+    res.status(200).json({ textContent: fullTranscription });
   } catch (error) {
     console.error('Error processing audio:', error);
     res.status(500).json({ error: 'Failed to process audio' });
   }
 });
+
+// Function to divide audio into smaller segments
+function divideAudioIntoSegments(audioData, segmentSize) {
+  const audioSegments = [];
+  let offset = 0;
+
+  while (offset < audioData.length) {
+    const segment = audioData.slice(offset, offset + segmentSize);
+    audioSegments.push(segment);
+    offset += segmentSize;
+  }
+
+  return audioSegments;
+}
 
 // Function to delete the uploaded file from memory
 function deleteUploadedFile(file) {
@@ -157,3 +193,6 @@ function deleteUploadedFile(file) {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
+
+

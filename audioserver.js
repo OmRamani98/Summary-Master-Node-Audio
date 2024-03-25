@@ -160,9 +160,11 @@
 
 const express = require('express');
 const multer = require('multer');
+const cors = require('cors');
 const { Storage } = require('@google-cloud/storage');
 
 const app = express();
+app.use(cors());
 const port = process.env.PORT || 8000;
 
 // Set up Google Cloud Storage using service account key from environment variable

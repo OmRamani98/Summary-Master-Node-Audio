@@ -13,7 +13,7 @@ const storage = new Storage({
   projectId: "summary-master-sdp",
   credentials: JSON.parse(process.env.CLOUD_STORAGE_KEYFILE)
 });
-const bucketName = 'summary-master'; // Replace with your GCS bucket name
+const bucketName = 'summary-master1'; // Replace with your GCS bucket name
 const bucket = storage.bucket(bucketName);
 
 // Set up Google Cloud Speech-to-Text

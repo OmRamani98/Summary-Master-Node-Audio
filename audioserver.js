@@ -36,7 +36,7 @@ app.post('/upload-audio', upload.single('audioFile'), async (req, res) => {
     // Configure audio settings for speech recognition
     const audioConfig = {
       encoding: 'MP3',
-      sampleRateHertz: 16000, // Adjust as needed
+      sampleRateHertz: 48000, // Adjust as needed
       languageCode: 'en-US', // Language code
       enableAutomaticPunctuation: true // Enable automatic punctuation
     };
